@@ -1,3 +1,15 @@
+---
+title: SQL Review Env
+emoji: 🔍
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+tags:
+  - openenv
+---
+
+
 # SQL Review Environment 🔍
 
 An OpenEnv-compatible RL environment where an AI agent learns to identify 
