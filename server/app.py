@@ -43,3 +43,10 @@ def state():
 def health():
     """Health check — used by Hugging Face to verify the Space is alive."""
     return {"status": "ok"}
+
+def main():
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=7860)
+
+if __name__ == "__main__":
+    main()
