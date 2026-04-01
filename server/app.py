@@ -4,6 +4,8 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from models import Action, Observation, State
 from server.environment import SQLReviewEnvironment
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+import json
 
 app = FastAPI(
     title="SQL Review Environment",
@@ -43,6 +45,37 @@ def state():
 def health():
     """Health check — used by Hugging Face to verify the Space is alive."""
     return {"status": "ok"}
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for HF Spaces compatibility."""
+    await websocket.accept()
+    # Fresh environment instance per connection
+    ws_env = SQLReviewEnvironment()
+    
+    try:
+        while True:
+            data = await websocket.receive_json()
+            msg_type = data.get("type")
+            
+            if msg_type == "reset":
+                result = ws_env.reset()
+                await websocket.send_json(result.model_dump())
+                
+            elif msg_type == "step":
+                action = Action(**data.get("action", {}))
+                result = ws_env.step(action)
+                await websocket.send_json(result.model_dump())
+                
+            elif msg_type == "state":
+                result = ws_env.state()
+                await websocket.send_json(result.model_dump())
+                
+            else:
+                await websocket.send_json({"error": f"Unknown message type: {msg_type}"})
+                
+    except WebSocketDisconnect:
+        pass
 
 def main():
     import uvicorn
