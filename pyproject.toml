@@ -3,6 +3,17 @@ name = "sql-review-env"
 version = "1.0.0"
 description = "An RL environment where an AI agent learns to identify and fix bugs in SQL queries."
 requires-python = ">=3.11"
+dependencies = [
+    "openenv-core>=0.2.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.20.0",
+    "pydantic>=2.0.0",
+    "requests>=2.28.0",
+    "openai>=1.0.0",
+]
+
+[project.scripts]
+server = "server.app:app"
 
 [tool.openenv]
 name = "sql-review-env"
