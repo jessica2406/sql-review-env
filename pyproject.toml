@@ -1,0 +1,9 @@
+[project]
+name = "sql-review-env"
+version = "1.0.0"
+description = "An RL environment where an AI agent learns to identify and fix bugs in SQL queries."
+requires-python = ">=3.11"
+
+[tool.openenv]
+name = "sql-review-env"
+version = "1.0.0"
