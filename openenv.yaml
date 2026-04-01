@@ -1,0 +1,37 @@
+name: sql-review-env
+version: "1.0.0"
+description: "An RL environment where an AI agent learns to identify and fix bugs in SQL queries. Tasks range from simple case-sensitivity errors to complex JOIN mistakes."
+author: "Jessica"
+
+environment:
+  type: text
+  domain: code-review
+
+tasks:
+  - id: easy_1
+    difficulty: easy
+    description: "Fix a case-sensitivity bug in a WHERE clause"
+  - id: medium_1
+    difficulty: medium
+    description: "Fix a missing GROUP BY clause in an aggregation query"
+  - id: hard_1
+    difficulty: hard
+    description: "Fix an incorrect JOIN type causing missing rows"
+
+api:
+  reset: POST /reset
+  step: POST /step
+  state: GET /state
+  health: GET /health
+
+reward:
+  min: 0.0
+  max: 1.0
+  type: continuous
+  description: "1.0 for exact correct output, partial credit for partially correct results, 0.0 for syntax errors or wrong results"
+
+tags:
+  - openenv
+  - sql
+  - code-review
+  - debugging
