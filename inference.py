@@ -1,20 +1,21 @@
 import os
 import requests
+import json
 from openai import OpenAI
 
 # ─────────────────────────────────────────
-# CONFIG — reads from environment variables
+# CONFIG — exactly as required by checklist
 # ─────────────────────────────────────────
-API_BASE_URL = os.environ.get("API_BASE_URL", "http://127.0.0.1:7860")
-MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
-HF_TOKEN = os.environ.get("HF_TOKEN", "")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:7860")
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
+HF_TOKEN = os.getenv("HF_TOKEN")  # No default — required by checklist
 
 client = OpenAI(
     api_key=HF_TOKEN,
     base_url=os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
 )
 
-SYSTEM_PROMPT = """You are an expert SQL developer. 
+SYSTEM_PROMPT = """You are an expert SQL developer.
 You will be given a buggy SQL query and the table schema.
 Your job is to find the bug and return the fixed query.
 
@@ -51,9 +52,7 @@ Return only JSON with fixed_query and explanation."""
         ]
     )
 
-    import json
     text = response.choices[0].message.content.strip()
-    # Strip markdown code blocks if model adds them
     text = text.replace("```json", "").replace("```", "").strip()
     return json.loads(text)
 
@@ -66,25 +65,22 @@ def run_episode() -> dict:
     res = requests.post(f"{API_BASE_URL}/reset")
     res.raise_for_status()
     obs = res.json()
-    print(f"Reset response: {obs}")  # Debug line
-    
-    # Safety check
+
     if "done" not in obs:
         raise ValueError(f"Unexpected response from /reset: {obs}")
 
-    print(f"\n{'='*60}")    
-    print("EPISODE START")
-    print(f"{'='*60}")
+    # START log — required structured format
+    print("START")
 
     max_steps = 10
     step = 0
 
     while not obs["done"] and step < max_steps:
         task_id = obs["task_id"]
-        print(f"\n[Step {step+1}] Task: {task_id}")
-        print(f"Buggy query: {obs['buggy_query'].strip()}")
 
-        # Ask LLM to fix the query
+        # STEP log — required structured format
+        print(f"STEP task_id={task_id} step={step+1}")
+
         try:
             action = ask_llm(
                 buggy_query=obs["buggy_query"],
@@ -92,53 +88,39 @@ def run_episode() -> dict:
                 expected_output=obs["expected_output"]
             )
         except Exception as e:
-            print(f"LLM error: {e}")
+            print(f"STEP llm_error={str(e)}")
             action = {
                 "fixed_query": obs["buggy_query"],
                 "explanation": "Could not parse LLM response"
             }
 
-        print(f"LLM fix: {action['fixed_query'].strip()}")
-        print(f"Explanation: {action['explanation']}")
-
         # Submit to environment
         res = requests.post(f"{API_BASE_URL}/step", json=action)
+        res.raise_for_status()
         obs = res.json()
 
         reward = obs["reward"]
         scores[task_id] = reward
-        print(f"Reward: {reward}")
-        print(f"Feedback: {obs['feedback']}")
 
+        print(f"STEP reward={reward} done={obs['done']}")
         step += 1
 
-    # Final state
+    # Get final state
     state_res = requests.get(f"{API_BASE_URL}/state")
     state = state_res.json()
 
-    print(f"\n{'='*60}")
-    print("EPISODE COMPLETE")
-    print(f"{'='*60}")
-    print(f"Total steps: {state['step_count']}")
-    print(f"Total score: {state['total_score']}")
-    print(f"\nScores per task:")
+    # END log — required structured format
+    print("END")
+
+    print(f"total_score={state['total_score']}")
     for task_id, score in scores.items():
-        print(f"  {task_id}: {score}")
+        print(f"score task_id={task_id} score={score}")
 
     return scores
 
 
 if __name__ == "__main__":
-    print("SQL Review Environment — Baseline Inference")
-    print(f"API: {API_BASE_URL}")
-    print(f"Model: {MODEL_NAME}")
-
-    # Summary
-    try:
-        scores = run_episode()
-        if scores:
-            avg = sum(scores.values()) / len(scores)
-            print(f"\nBaseline Score: {avg:.2f} / 1.0")
-    except Exception as e:
-        print(f"Error during episode: {e}")
-        raise
+    scores = run_episode()
+    if scores:
+        avg = sum(scores.values()) / len(scores)
+        print(f"baseline_score={avg:.2f}")
