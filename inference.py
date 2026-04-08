@@ -64,9 +64,15 @@ def run_episode() -> dict:
 
     # Reset environment
     res = requests.post(f"{API_BASE_URL}/reset")
+    res.raise_for_status()
     obs = res.json()
+    print(f"Reset response: {obs}")  # Debug line
+    
+    # Safety check
+    if "done" not in obs:
+        raise ValueError(f"Unexpected response from /reset: {obs}")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'='*60}")    
     print("EPISODE START")
     print(f"{'='*60}")
 
@@ -126,9 +132,13 @@ if __name__ == "__main__":
     print("SQL Review Environment — Baseline Inference")
     print(f"API: {API_BASE_URL}")
     print(f"Model: {MODEL_NAME}")
-    scores = run_episode()
 
     # Summary
-    if scores:
-        avg = sum(scores.values()) / len(scores)
-        print(f"\nBaseline Score: {avg:.2f} / 1.0")
+    try:
+        scores = run_episode()
+        if scores:
+            avg = sum(scores.values()) / len(scores)
+            print(f"\nBaseline Score: {avg:.2f} / 1.0")
+    except Exception as e:
+        print(f"Error during episode: {e}")
+        raise
